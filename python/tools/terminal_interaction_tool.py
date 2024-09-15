@@ -15,7 +15,7 @@ class State:
     docker: DockerContainerManager | None
         
 
-class CodeExecution(Tool):
+class TerminalInteraction(Tool):
 
     async def execute(self,**kwargs):
 
@@ -23,23 +23,17 @@ class CodeExecution(Tool):
         
         await self.prepare_state()
 
-        # os.chdir(files.get_abs_path("./work_dir")) #change CWD to work_dir
-        
         runtime = self.args["runtime"].lower().strip()
-        if runtime == "python":
-            response = await self.execute_python_code(self.args["code"])
-        elif runtime == "nodejs":
-            response = await self.execute_nodejs_code(self.args["code"])
-        elif runtime == "terminal":
-            response = await self.execute_terminal_command(self.args["code"])
+        if runtime == "terminal":
+            response = await self.execute_terminal_command(self.args["command"])
         elif runtime == "output":
             response = await self.get_terminal_output(wait_with_output=5, wait_without_output=20)
         elif runtime == "reset":
             response = await self.reset_terminal()
         else:
-            response = self.agent.read_prompt("fw.code_runtime_wrong.md", runtime=runtime)
+            response = self.agent.read_prompt("fw.terminal_interaction_runtime_wrong.md", runtime=runtime)
 
-        if not response: response = self.agent.read_prompt("fw.code_no_output.md")
+        if not response: response = self.agent.read_prompt("fw.terminal_interaction_no_output.md")
         return Response(message=response, break_loop=False)
 
     async def before_execution(self, **kwargs):
@@ -75,16 +69,6 @@ class CodeExecution(Tool):
             await shell.connect()
         self.agent.set_data("cot_state", self.state)
     
-    async def execute_python_code(self, code):
-        escaped_code = shlex.quote(code)
-        command = f'python3 -c {escaped_code}'
-        return await self.terminal_session(command)
-
-    async def execute_nodejs_code(self, code):
-        escaped_code = shlex.quote(code)
-        command = f'node -e {escaped_code}'
-        return await self.terminal_session(command)
-
     async def execute_terminal_command(self, command):
         return await self.terminal_session(command)
 
@@ -117,6 +101,6 @@ class CodeExecution(Tool):
     async def reset_terminal(self):
         self.state.shell.close()
         await self.prepare_state(reset=True)
-        response = self.agent.read_prompt("fw.code_reset.md")
+        response = self.agent.read_prompt("fw.terminal_interaction_reset.md")
         self.log.update(content=response)
         return response
